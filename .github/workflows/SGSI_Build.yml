@@ -7,18 +7,20 @@ on:
     types: [started]
     
 env:              
-  ROM_URL: 'https://dl.google.com/developers/android/sc/images/ota/redfin-ota-spp2.210219.008-3d61e529.zip'
+  ROM_URL: 'https://testing.fetchgoogleapi.workers.dev/0://redfin-spb2.210513.007-factory-2b21382e/redfin-spb2.210513.007/image-redfin-spb2.210513.007.zip'
   ZIP_NAME: 'update.zip'
-  OS_TYPE: 'Generic'
+  OS_TYPE: 'Pixel'
   BUILD_TYPE: 'ab'
-  REPACK_NAME: 'SGSI.zip'
+  REPACK_NAME: 'Redfin_Beta2_SGSI.zip'
   VERSION: '12'
+  upload _SourceForge: 'false'
+  upload_WeTransfer: 'true'
   upload_action-gh-release: 'true'
   SETUP: 'true'
   
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
        - name: Checkout
@@ -42,7 +44,7 @@ jobs:
          run: |
              git clone https://github.com/xiaoxindada/SGSI-build-tool.git -b 12 $GITHUB_WORKSPACE/SGSI-build-tool
            
-       - name: Download zip...
+       - name: Download Firmware...
          run: |
             cd $GITHUB_WORKSPACE/SGSI-build-tool
             mkdir ./tmp
@@ -71,22 +73,46 @@ jobs:
          run: |            
              cd $GITHUB_WORKSPACE/SGSI-build-tool
              pwd
-             mkdir -p upload
              zip -r $REPACK_NAME ./SGSI/*
-             if [[ $(du -sb "$REPACK_NAME" | awk '{print $1}') -gt 2097152000 ]];then
-                 echo -e "split packaging..."
-                 tar -cpzf - "$REPACK_NAME" | split -d -b 1024m - "upload/$REPACK_NAME"
-             else
-                 mv $REPACK_NAME upload/$REPACK_NAME
-             fi
-             ls "upload"
+             ls "$REPACK_NAME"
+
+       - name: Upload SGSI to SourceForge...
+         if: env.upload_SourceForge == 'true'
+         run: |
+             cd $GITHUB_WORKSPACE/SGSI-build-tool/output
+             pwd
+             ls "$REPACK_NAME"
+             zip a $REPACK_NAME.zip
+             expect -c " 
+             spawn sftp ${{ secrets.SFUSER }}@frs.sourceforge.net
+             expect \"Password\"        
+             send \"${{ secrets.SFPASS }}\r\"
+             expect \"sftp> \"
+             send \"cd ${{ secrets.SFDIR }}\r\"
+             set timeout -1
+             send \"put $REPACK_NAME.zip\r\"
+             expect \"Uploading\"
+             expect \"100%\"
+             expect \"sftp>\"
+             send \"bye\r\"
+             interact"
+
+       - name: Upload SGSI to WeTransfer...
+         if: env.upload_WeTransfer == 'true' 
+         run: |
+           cd $GITHUB_WORKSPACE/SGSI-build-tool
+           pwd
+           ls "$REPACK_NAME"
+           curl -sL https://git.io/file-transfer | sh
+           ./transfer wet ./$REPACK_NAME
 
        - name: Upload SGSI to action-gh-release...
          if: env.upload_action-gh-release == 'true'
-         uses: ncipollo/release-action@v1.8.6
+         uses: softprops/action-gh-release@v1
          with:
-           artifacts: ${{ github.workspace }}/SGSI-build-tool/upload/*
+           files: ${{ github.workspace }}/SGSI-build-tool/${{ env.REPACK_NAME }}
            name: xiaoxinSGSI-${{ env.OS_TYPE }}-${{ env.BUILD_TYPE }}-Android${{ env.VERSION }}-unpack
-           tag: xiaoxinSGSI-${{ env.OS_TYPE }}-${{ env.BUILD_TYPE }}-Android${{ env.VERSION }}-${{ github.run_number }}
-           body: Use actions auto bulid by Xiaoxindada
-           token: ${{ secrets.GITHUB_TOKEN }}
+           tag_name: 12
+           #body: Use actions auto bulid
+         env:
+            GH_TOKEN: ${{ secrets.GH_TOKEN }}           
