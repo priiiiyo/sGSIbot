@@ -7,7 +7,7 @@ on:
     types: [started]
     
 env:              
-  ROM_URL: 'https://testing.fetchgoogleapi.workers.dev/0://redfin-spb2.210513.007-factory-2b21382e/redfin-spb2.210513.007/image-redfin-spb2.210513.007.zip'
+  ROM_URL: 'https://www.priiiiyocloud.workers.dev/0://redfin-spb2.210513.007-factory-2b21382e/redfin-spb2.210513.007/image-redfin-spb2.210513.007.zip'
   ZIP_NAME: 'update.zip'
   OS_TYPE: 'Pixel'
   BUILD_TYPE: 'ab'
